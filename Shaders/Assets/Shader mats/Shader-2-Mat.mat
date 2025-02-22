@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Shader-2-Mat
+  m_Shader: {fileID: 4800000, guid: af2acaa50d206408e9e34e72d4a90074, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _Image1:
+        m_Texture: {fileID: 2800000, guid: 6bae5da2e2efb44dba569f70c4091578, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Image2:
+        m_Texture: {fileID: 2800000, guid: 3faeccafc73434d6ca747d247dbe45db, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _MaxSwirlDuration: 1
+    - _ReturnDuration: 1
+    - _SwirlRadiusMax: 0.75
+    - _SwirlRadiusMin: 0
+    - _SwirlSpeed: 0.6
+    - _SwirlStrength: 10
+    - _TransitionDuration: 0.5
+    - _TransitionEnd: 1
+    - _TransitionStart: 0.6
+    - _TwistStrength: 3
+    m_Colors: []
+  m_BuildTextureStacks: []

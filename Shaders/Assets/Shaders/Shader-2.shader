@@ -2,7 +2,12 @@ Shader "Unlit/Shader-2"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
+        _Image1 ("Image 1", 2D) = "white" {}
+        _Image2 ("Image 2", 2D) = "white" {}
+        _SwirlSpeed ("Swirl Speed", Range(0.1, 2.0)) = 0.25
+        _SwirlStrength ("Swirl Strength", Range(1.0, 30.0)) = 10.0
+        _SwirlRadiusMin ("Swirl Inner Radius", Range(0.0, 1.0)) = 0.1
+        _SwirlRadiusMax ("Swirl Outer Radius", Range(0.0, 2.0)) = 1.0
     }
     SubShader
     {
@@ -14,9 +19,6 @@ Shader "Unlit/Shader-2"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // make fog work
-            #pragma multi_compile_fog
-
             #include "UnityCG.cginc"
 
             struct appdata
@@ -28,29 +30,125 @@ Shader "Unlit/Shader-2"
             struct v2f
             {
                 float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
                 float4 vertex : SV_POSITION;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
+            sampler2D _Image1;
+            sampler2D _Image2;
+            float4 _Image1_ST;
+            float4 _Image2_ST;
+            float _SwirlSpeed;
+            float _SwirlStrength;
+            float _SwirlRadiusMin;
+            float _SwirlRadiusMax;
 
             v2f vert (appdata v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                UNITY_TRANSFER_FOG(o,o.vertex);
+                o.uv = TRANSFORM_TEX(v.uv, _Image1); // Same ST for both textures
                 return o;
+            }
+
+            float2 applySwirlEffect(float2 uv, float2 center, float strength, float direction)
+            {
+                float2 dir = uv - center;
+                float dist = length(dir);
+
+                // Calculate normalized distance within the swirl radius range
+                float normalizedDist = smoothstep(_SwirlRadiusMin, _SwirlRadiusMax, dist);
+
+                // Calculate the angle to the point
+                float angle = atan2(dir.y, dir.x);
+
+                // Apply a direction-based twist that's affected by distance
+                float twistAmount = strength * direction * normalizedDist;
+                angle += twistAmount;
+
+                // Convert back to cartesian coordinates
+                float x = cos(angle) * dist;
+                float y = sin(angle) * dist;
+
+                return center + float2(x, y);
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // sample the texture
-                fixed4 col = tex2D(_MainTex, i.uv);
-                // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, col);
-                return col;
+                // Center point
+                float2 center = float2(0.5, 0.5);
+
+                // Create a continuous, smooth animation cycle using a sine wave
+                // We'll use a 4-second cycle for right swirl and 4-second cycle for left swirl
+                float time = _Time.y * _SwirlSpeed;
+                float fullCycleDuration = 8.0; // 8 seconds for a full cycle (right + left)
+                float halfCycleDuration = 4.0; // 4 seconds for half cycle
+
+                float cycle = fmod(time, fullCycleDuration);
+                float direction, swirlFactor, blendFactor;
+
+                // First half cycle (right swirl)
+                if (cycle < halfCycleDuration) {
+                    direction = 1.0;
+
+                    // Create a smooth sine wave for the swirl amount
+                    // Map from 0-PI for a full up-and-down curve
+                    float swirlProgress = sin(3.14159265 * cycle / halfCycleDuration);
+                    swirlFactor = swirlProgress;
+
+                    // For fade transition - starts at max swirl (π/2 or 1/4 of half cycle)
+                    // and completes by the time it returns to center (1/2 of half cycle)
+                    if (cycle < halfCycleDuration / 4.0) {
+                        // First quarter - swirl up, no fade yet
+                        blendFactor = 0.0;
+                    }
+                    else if (cycle < halfCycleDuration * 3.0 / 4.0) {
+                        // Second and third quarters - from max swirl to center, complete fade
+                        // This gives us a 2-second fade when using the default timing
+                        float fadeProgress = (cycle - (halfCycleDuration / 4.0)) / (halfCycleDuration / 2.0);
+                        blendFactor = smoothstep(0.0, 1.0, fadeProgress);
+                    }
+                    else {
+                        // Last quarter - keep image 2 visible
+                        blendFactor = 1.0;
+                    }
+                }
+                // Second half cycle (left swirl)
+                else {
+                    float adjustedCycle = cycle - halfCycleDuration;
+                    direction = -1.0;
+
+                    // Create a smooth sine wave for the swirl amount
+                    float swirlProgress = sin(3.14159265 * adjustedCycle / halfCycleDuration);
+                    swirlFactor = swirlProgress;
+
+                    // For fade transition - similar to first half but fade back to image 1
+                    if (adjustedCycle < halfCycleDuration / 4.0) {
+                        // First quarter - swirl up, no fade yet
+                        blendFactor = 1.0;
+                    }
+                    else if (adjustedCycle < halfCycleDuration * 3.0 / 4.0) {
+                        // Second and third quarters - from max swirl to center, complete fade
+                        float fadeProgress = (adjustedCycle - (halfCycleDuration / 4.0)) / (halfCycleDuration / 2.0);
+                        blendFactor = 1.0 - smoothstep(0.0, 1.0, fadeProgress);
+                    }
+                    else {
+                        // Last quarter - keep image 1 visible
+                        blendFactor = 0.0;
+                    }
+                }
+
+                // Calculate final swirl amount
+                float swirlAmount = _SwirlStrength * swirlFactor;
+
+                // Apply swirl effect to UV coordinates
+                float2 swirlUV = applySwirlEffect(i.uv, center, swirlAmount, direction);
+
+                // Sample both textures
+                fixed4 col1 = tex2D(_Image1, swirlUV);
+                fixed4 col2 = tex2D(_Image2, swirlUV);
+
+                // Blend between the two images
+                return lerp(col1, col2, blendFactor);
             }
             ENDCG
         }
