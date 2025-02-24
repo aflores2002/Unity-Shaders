@@ -47,74 +47,74 @@ Shader "Unlit/Shader3"
                 return o;
             }
 
-            // Determines if the given grid cell should show the red or green image
+            // determines if a grid cell is red-striped
             // based on checkerboard pattern (row + col) % 2
-            bool IsRedCell(int2 gridCoord)
+            bool IsRedStripedCell(int2 gridCoord)
             {
                 return (gridCoord.x + gridCoord.y) % 2 == 0;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // Animation timing
+                // animation timing
                 float totalCycleTime = 4.0; // 4 phases
                 float timeInCycle = fmod(_Time.y * _Speed, totalCycleTime);
                 int currentPhase = floor(timeInCycle);
                 float phaseProgress = frac(timeInCycle);
 
-                // Calculate grid coordinates
+                // calculate grid coordinates
                 float2 gridUV = i.uv * _GridSize;
                 int2 gridCoord = int2(floor(gridUV));
                 float2 cellUV = frac(gridUV);
 
-                // Determine if this cell should show the red or green image
-                bool isRedCell = IsRedCell(gridCoord);
+                // determine if this cell has red stripes
+                bool isRedStripedCell = IsRedStripedCell(gridCoord);
 
-                // Initialize UV offsets for both red and green images
+                // initialize UV offsets for both red and green images
                 float2 redOffset = float2(0, 0);
                 float2 greenOffset = float2(0, 0);
 
-                // Apply the appropriate offsets based on the current phase
-                // Phase 0: Starting position (both centered)
-                // Phase 1: Red shifts left, Green shifts right
+                // apply the appropriate offsets based on the current phase
                 if (currentPhase == 0) {
+                    // phase 1: Red shifts left, Green shifts right
                     float t = phaseProgress;
                     redOffset = float2(-t, 0) / _GridSize;
                     greenOffset = float2(t, 0) / _GridSize;
                 }
-                // Phase 2: Red shifts down, Green shifts up
                 else if (currentPhase == 1) {
-                    redOffset = float2(-1, phaseProgress) / _GridSize;
-                    greenOffset = float2(1, -phaseProgress) / _GridSize;
+                    // phase 2: Red shifts down, Green shifts up
+                    redOffset = float2(-1, -phaseProgress) / _GridSize;
+                    greenOffset = float2(1, phaseProgress) / _GridSize;
                 }
-                // Phase 3: Red shifts right, Green shifts left
                 else if (currentPhase == 2) {
+                    // phase 3: Red shifts right, Green shifts left
                     float t = phaseProgress;
-                    redOffset = float2(-1 + t, 1) / _GridSize;
-                    greenOffset = float2(1 - t, -1) / _GridSize;
+                    redOffset = float2(-1 + t, -1) / _GridSize;
+                    greenOffset = float2(1 - t, 1) / _GridSize;
                 }
-                // Final phase: Both converge to center
                 else if (currentPhase == 3) {
+                    // final phase: Both converge to center
                     float t = phaseProgress;
-                    redOffset = float2(0, 1 - t) / _GridSize;
-                    greenOffset = float2(0, -1 + t) / _GridSize;
+                    redOffset = float2(0, -1 + t) / _GridSize;
+                    greenOffset = float2(0, 1 - t) / _GridSize;
                 }
 
-                // Sample the texture with the appropriate offset based on which image this cell should show
+                // sample the texture with the appropriate offset
+                // SWAPPED: Red image now shows in green-striped cells, Green image in red-striped cells
                 float2 sampleUV = i.uv;
-                if (isRedCell) {
+                if (!isRedStripedCell) {  // SWAPPED: Notice the '!' operator
                     sampleUV += redOffset;
                 } else {
                     sampleUV += greenOffset;
                 }
 
-                // Ensure UVs are within [0,1]
+                // ensure UVs are within [0,1]
                 sampleUV = frac(sampleUV);
 
-                // Sample the texture
+                // sample the texture
                 fixed4 col = tex2D(_MainTex, sampleUV);
 
-                // Apply fog
+                // apply fog
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;
             }

@@ -37,7 +37,7 @@ Material:
     - _ReturnDuration: 1
     - _SwirlRadiusMax: 0.75
     - _SwirlRadiusMin: 0
-    - _SwirlSpeed: 0.6
+    - _SwirlSpeed: 0.7
     - _SwirlStrength: 10
     - _TransitionDuration: 0.5
     - _TransitionEnd: 1

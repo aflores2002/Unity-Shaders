@@ -3,13 +3,13 @@ Shader "Unlit/NewUnlitShader"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        _ScrollSpeed ("Scroll Speed", Float) = 1.0
-        _StaticDensity ("Static Density", Float) = 40  // controls the grain size of the static
-        _StaticAmount ("Static Amount", Range(0, 1)) = 0.75  // controls static visibility
-        _StaticRate ("Static Update Rate", Float) = 15.0  // controls static animation speed
-        _StaticThreshold ("Static Threshold", Range(0.1, 0.9)) = 0.5  // controls black/white balance
-        _StaticSoftness ("Static Softness", Range(0, 0.2)) = 0.05  // controls static edge softness
-        _GrayScale ("Grayscale Amount", Range(0, 1)) = 0.3  // controls image desaturation
+        _ScrollSpeed ("Scroll Speed", Float) = 1.0 // controls scroll speed
+        _StaticDensity ("Static Density", Float) = 40 // controls the grain size of the static
+        _StaticAmount ("Static Amount", Range(0, 1)) = 0.75 // controls static visibility
+        _StaticRate ("Static Update Rate", Float) = 15.0 // controls static animation speed
+        _StaticThreshold ("Static Threshold", Range(0.1, 0.9)) = 0.5 // controls black/white balance
+        _StaticSoftness ("Static Softness", Range(0, 0.2)) = 0.05 // controls static edge softness
+        _GrayScale ("Grayscale Amount", Range(0, 1)) = 0.3 // controls image desaturation
     }
     SubShader
     {
