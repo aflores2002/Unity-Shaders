@@ -1,10 +1,10 @@
-Shader "Unlit/Shader3"
+Shader "Unlit/Shader-3"
 {
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        _GridSize ("Grid Size", Int) = 4
-        _Speed ("Animation Speed", Range(0.1, 10.0)) = 1.0
+        _GridSize ("Grid Size", Int) = 4 // controls the size of the grid pattern (e.g. 4x4 matrix)
+        _Speed ("Animation Speed", Range(0.1, 10.0)) = 1.0 // controls how fast the image versions animate
     }
     SubShader
     {
@@ -35,6 +35,7 @@ Shader "Unlit/Shader3"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
+            // properties for controlling the grid-based split image animation
             int _GridSize;
             float _Speed;
 
@@ -47,71 +48,70 @@ Shader "Unlit/Shader3"
                 return o;
             }
 
-            // determines if a grid cell is red-striped
-            // based on checkerboard pattern (row + col) % 2
-            bool IsRedStripedCell(int2 gridCoord)
+            // determines cells where version 1 of the split image should be visible
+            // on a 4x4 grid, this includes cells: (1,2), (1,4), (2,1), (2,3), (3,2), (3,4), (4,1), (4,3)
+            bool IsVersionOneCell(int2 gridCoord)
             {
                 return (gridCoord.x + gridCoord.y) % 2 == 0;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // animation timing
-                float totalCycleTime = 4.0; // 4 phases
+                // calculate timing for the animation sequence where both image versions eventually converge
+                float totalCycleTime = 4.0;
                 float timeInCycle = fmod(_Time.y * _Speed, totalCycleTime);
                 int currentPhase = floor(timeInCycle);
                 float phaseProgress = frac(timeInCycle);
 
-                // calculate grid coordinates
+                // convert uv coordinates to grid space for pattern visibility
                 float2 gridUV = i.uv * _GridSize;
                 int2 gridCoord = int2(floor(gridUV));
                 float2 cellUV = frac(gridUV);
 
-                // determine if this cell has red stripes
-                bool isRedStripedCell = IsRedStripedCell(gridCoord);
+                // determine if this cell should show version 1 of the split image
+                bool isVersionOneCell = IsVersionOneCell(gridCoord);
 
-                // initialize UV offsets for both red and green images
-                float2 redOffset = float2(0, 0);
-                float2 greenOffset = float2(0, 0);
+                // initialize UV offsets for both versions of the split image
+                float2 splitV1Offset = float2(0, 0);
+                float2 splitV2Offset = float2(0, 0);
 
-                // apply the appropriate offsets based on the current phase
+                // calculate animation offsets for each phase
                 if (currentPhase == 0) {
-                    // phase 1: Red shifts left, Green shifts right
+                    // phase 1: version 1 shifts left while version 2 shifts right
                     float t = phaseProgress;
-                    redOffset = float2(-t, 0) / _GridSize;
-                    greenOffset = float2(t, 0) / _GridSize;
+                    splitV1Offset = float2(-t, 0) / _GridSize;
+                    splitV2Offset = float2(t, 0) / _GridSize;
                 }
                 else if (currentPhase == 1) {
-                    // phase 2: Red shifts down, Green shifts up
-                    redOffset = float2(-1, -phaseProgress) / _GridSize;
-                    greenOffset = float2(1, phaseProgress) / _GridSize;
+                    // phase 2: version 1 shifts down while version 2 shifts up
+                    splitV1Offset = float2(-1, -phaseProgress) / _GridSize;
+                    splitV2Offset = float2(1, phaseProgress) / _GridSize;
                 }
                 else if (currentPhase == 2) {
-                    // phase 3: Red shifts right, Green shifts left
+                    // phase 3: version 1 shifts right while version 2 shifts left
                     float t = phaseProgress;
-                    redOffset = float2(-1 + t, -1) / _GridSize;
-                    greenOffset = float2(1 - t, 1) / _GridSize;
+                    splitV1Offset = float2(-1 + t, -1) / _GridSize;
+                    splitV2Offset = float2(1 - t, 1) / _GridSize;
                 }
                 else if (currentPhase == 3) {
-                    // final phase: Both converge to center
+                    // final phase: version 1 shifts up while version 2 shifts down to converge with version 1
                     float t = phaseProgress;
-                    redOffset = float2(0, -1 + t) / _GridSize;
-                    greenOffset = float2(0, 1 - t) / _GridSize;
+                    splitV1Offset = float2(0, -1 + t) / _GridSize;
+                    splitV2Offset = float2(0, 1 - t) / _GridSize;
                 }
 
-                // sample the texture with the appropriate offset
-                // SWAPPED: Red image now shows in green-striped cells, Green image in red-striped cells
+                // apply the appropriate offset based on which version should be visible in this cell
                 float2 sampleUV = i.uv;
-                if (!isRedStripedCell) {  // SWAPPED: Notice the '!' operator
-                    sampleUV += redOffset;
+                if (!isVersionOneCell) {
+                    sampleUV += splitV1Offset;
                 } else {
-                    sampleUV += greenOffset;
+                    sampleUV += splitV2Offset;
                 }
 
                 // ensure UVs are within [0,1]
                 sampleUV = frac(sampleUV);
 
-                // sample the texture
+                // sample the texture to get the appropriate version of the split image
                 fixed4 col = tex2D(_MainTex, sampleUV);
 
                 // apply fog
