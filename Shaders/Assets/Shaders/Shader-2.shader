@@ -2,12 +2,12 @@ Shader "Unlit/Shader-2"
 {
     Properties
     {
-        _Image1 ("Image 1", 2D) = "white" {}
-        _Image2 ("Image 2", 2D) = "white" {}
-        _SwirlSpeed ("Swirl Speed", Range(0.1, 2.0)) = 0.25
-        _SwirlStrength ("Swirl Strength", Range(1.0, 30.0)) = 10.0
-        _SwirlRadiusMin ("Swirl Inner Radius", Range(0.0, 1.0)) = 0.1
-        _SwirlRadiusMax ("Swirl Outer Radius", Range(0.0, 2.0)) = 1.0
+        _Image1 ("Image 1", 2D) = "white" {} // first image in the swirl transition
+        _Image2 ("Image 2", 2D) = "white" {} // second image in the swirl transition
+        _SwirlSpeed ("Swirl Speed", Range(0.1, 2.0)) = 0.25 // controls how fast the swirl animation plays
+        _SwirlStrength ("Swirl Strength", Range(1.0, 30.0)) = 10.0 // controls how tight the swirl appears
+        _SwirlRadiusMin ("Swirl Inner Radius", Range(0.0, 1.0)) = 0.1 // defines where swirl effect begins from center
+        _SwirlRadiusMax ("Swirl Outer Radius", Range(0.0, 2.0)) = 1.0 // defines where swirl effect ends from center
     }
     SubShader
     {
@@ -37,6 +37,7 @@ Shader "Unlit/Shader-2"
             sampler2D _Image2;
             float4 _Image1_ST;
             float4 _Image2_ST;
+            // custom properties for controlling swirl transition
             float _SwirlSpeed;
             float _SwirlStrength;
             float _SwirlRadiusMin;
@@ -46,26 +47,28 @@ Shader "Unlit/Shader-2"
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _Image1); // same ST for both textures
+                o.uv = TRANSFORM_TEX(v.uv, _Image1);
                 return o;
             }
 
+            // applies a radial swirl effect to uv coordinates based on distance from center
+            // strength controls the amount of twist, direction determines clockwise/counterclockwise
             float2 applySwirlEffect(float2 uv, float2 center, float strength, float direction)
             {
                 float2 dir = uv - center;
                 float dist = length(dir);
 
-                // calculate normalized distance within the swirl radius range
+                // calculate how much swirl to apply based on distance from center
                 float normalizedDist = smoothstep(_SwirlRadiusMin, _SwirlRadiusMax, dist);
 
-                // calculate the angle to the point
+                // convert to polar coordinates for rotation
                 float angle = atan2(dir.y, dir.x);
 
-                // apply a direction-based twist that's affected by distance
+                // apply directional twist that falls off with distance
                 float twistAmount = strength * direction * normalizedDist;
                 angle += twistAmount;
 
-                // convert back to cartesian coordinates
+                // convert back to uv space
                 float x = cos(angle) * dist;
                 float y = sin(angle) * dist;
 
@@ -74,19 +77,18 @@ Shader "Unlit/Shader-2"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // center point
+                // center point for swirl effect
                 float2 center = float2(0.5, 0.5);
 
-                // create a continuous, smooth animation cycle using a sine wave
-                // we'll use a 4-second cycle for right swirl and 4-second cycle for left swirl
+                // setup timing for alternating right/left swirl cycles
                 float time = _Time.y * _SwirlSpeed;
-                float fullCycleDuration = 6.0; // 8 seconds for a full cycle (right + left)
-                float halfCycleDuration = 3.0; // 4 seconds for half cycle
+                float fullCycleDuration = 6.0; // complete right-to-left transition cycle
+                float halfCycleDuration = 3.0; // single direction swirl duration
 
                 float cycle = fmod(time, fullCycleDuration);
                 float direction, swirlFactor, blendFactor;
 
-                // first half cycle (right swirl)
+                // handle right swirl phase (first half of cycle)
                 if (cycle < halfCycleDuration) {
                     direction = 1.0;
 
@@ -103,16 +105,15 @@ Shader "Unlit/Shader-2"
                     }
                     else if (cycle < halfCycleDuration * 3.0 / 4.0) {
                         // second and third quarters -> from max swirl to center, complete fade
-                        // this gives us a 2-second fade when using the default timing
                         float fadeProgress = (cycle - (halfCycleDuration / 4.0)) / (halfCycleDuration / 2.0);
                         blendFactor = smoothstep(0.0, 1.0, fadeProgress);
                     }
                     else {
-                        // last quarter> - keep image 2 visible
+                        // last quarter -> keep image 2 visible
                         blendFactor = 1.0;
                     }
                 }
-                // second half cycle (left swirl)
+                // handle left swirl phase
                 else {
                     float adjustedCycle = cycle - halfCycleDuration;
                     direction = -1.0;
@@ -137,7 +138,7 @@ Shader "Unlit/Shader-2"
                     }
                 }
 
-                // calculate final swirl amount
+                // calculate final swirl intensity
                 float swirlAmount = _SwirlStrength * swirlFactor;
 
                 // apply swirl effect to UV coordinates
